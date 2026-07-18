@@ -71,17 +71,66 @@ jobs:
         working-directory: artifacts/anime-site/android
         run: chmod +x gradlew
 
-      - name: Build debug APK
+      # ── Decode release keystore from secret ──────────────────────────────────
+      - name: Decode keystore
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > artifacts/anime-site/android/avistream.jks
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+
+      # ── Print SHA-256 fingerprint (copy this into assetlinks.json) ────────────
+      - name: Print certificate fingerprint
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
+        run: |
+          keytool -list -v \
+            -keystore artifacts/anime-site/android/avistream.jks \
+            -alias "${{ secrets.KEY_ALIAS }}" \
+            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+          | grep "SHA256:"
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+
+      # ── Build APK (release if keystore present, debug otherwise) ─────────────
+      - name: Build release APK
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
+        working-directory: artifacts/anime-site/android
+        run: |
+          ./gradlew assembleRelease --no-daemon \
+            -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/artifacts/anime-site/android/avistream.jks" \
+            -Pandroid.injected.signing.store.password="${{ secrets.KEYSTORE_PASSWORD }}" \
+            -Pandroid.injected.signing.key.alias="${{ secrets.KEY_ALIAS }}" \
+            -Pandroid.injected.signing.key.password="${{ secrets.KEY_PASSWORD }}"
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+
+      - name: Build debug APK (fallback — no keystore)
+        if: ${{ env.KEYSTORE_BASE64 == '' }}
         working-directory: artifacts/anime-site/android
         run: ./gradlew assembleDebug --no-daemon
         env:
           ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
       # ── Upload artifact ───────────────────────────────────────────────────────
-      - name: Upload APK
+      - name: Upload release APK
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: avistream-debug-${{ github.sha }}
+          name: AviStream-release-${{ github.sha }}
+          path: artifacts/anime-site/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
+          if-no-files-found: error
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+
+      - name: Upload debug APK (fallback)
+        if: ${{ env.KEYSTORE_BASE64 == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: AviStream-debug-${{ github.sha }}
           path: artifacts/anime-site/android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
           if-no-files-found: error
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
