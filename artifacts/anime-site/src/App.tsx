@@ -19,6 +19,7 @@ import Onboarding from "@/pages/onboarding";
 import { useTheme, ThemeContext, applyTheme } from "@/hooks/use-theme";
 import { UserDataProvider } from "@/hooks/use-user-data";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { SmartAppBanner } from "@/components/SmartAppBanner";
 
 const queryClient = new QueryClient();
 
@@ -219,6 +220,7 @@ function ClerkProviderWithRoutes() {
         <TooltipProvider>
           <ThemeProvider>
             <UserDataProvider>
+              <SmartAppBanner />
               <Layout />
               <Toaster />
               <OfflineBanner />
