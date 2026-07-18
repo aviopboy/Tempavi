@@ -40,12 +40,7 @@
         { "target": "AppImage", "arch": ["x64", "arm64"] }
       ],
       "category": "Video",
-      "icon": "icons/icon-512.png",
-      "desktop": {
-        "Name": "AviStream",
-        "Comment": "Anime. Anytime. Anywhere.",
-        "Categories": "Video;AudioVideo;"
-      }
+      "icon": "icons/icon-512.png"
     },
     "win": {
       "target": [
