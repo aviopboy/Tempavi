@@ -1,0 +1,85 @@
+name: Build AviStream APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'artifacts/anime-site/**'
+      - 'lib/**'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:        # allow manual trigger from GitHub UI
+
+jobs:
+  build-apk:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # ── Checkout ─────────────────────────────────────────────────────────────
+      - uses: actions/checkout@v4
+
+      # ── pnpm ─────────────────────────────────────────────────────────────────
+      - uses: pnpm/action-setup@v4
+        with: { version: "10" }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      # ── Java (Gradle needs JDK 17+) ──────────────────────────────────────────
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # ── Android SDK ──────────────────────────────────────────────────────────
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK components
+        run: |
+          yes | sdkmanager \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+      # ── Install dependencies ──────────────────────────────────────────────────
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ── Generate PNG icons ───────────────────────────────────────────────────
+      - name: Generate app icons
+        run: node scripts/gen-icons-pure.mjs
+
+      # ── Build web app ─────────────────────────────────────────────────────────
+      - name: Build AviStream web
+        run: pnpm --filter @workspace/anime-site run build
+        env:
+          BASE_PATH: "/"
+          PORT: "3000"
+
+      # ── Capacitor sync ────────────────────────────────────────────────────────
+      - name: Capacitor sync
+        working-directory: artifacts/anime-site
+        run: npx cap sync android
+
+      # ── Gradle assemble ──────────────────────────────────────────────────────
+      - name: Make gradlew executable
+        working-directory: artifacts/anime-site/android
+        run: chmod +x gradlew
+
+      - name: Build debug APK
+        working-directory: artifacts/anime-site/android
+        run: ./gradlew assembleDebug --no-daemon
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+
+      # ── Upload artifact ───────────────────────────────────────────────────────
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: avistream-debug-${{ github.sha }}
+          path: artifacts/anime-site/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error

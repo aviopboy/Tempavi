@@ -1,0 +1,36 @@
+# ─── Netlify configuration for AviStream ─────────────────────────────────────
+#
+# Deploy the whole monorepo repo to Netlify.
+# Netlify will pick this file up from the repo root automatically.
+#
+# Required environment variables — set these in Netlify → Site Settings → Env vars:
+#   VITE_CLERK_PUBLISHABLE_KEY   your Clerk publishable key (starts with pk_live_)
+#
+# Optional:
+#   VITE_CLERK_PROXY_URL         leave empty unless you set up a Clerk proxy
+# ─────────────────────────────────────────────────────────────────────────────
+
+[build]
+  # pnpm install is run automatically by Netlify when pnpm-lock.yaml is present.
+  command = "pnpm --filter @workspace/anime-site run build"
+  publish  = "artifacts/anime-site/dist/public"
+
+[build.environment]
+  NODE_VERSION = "24"
+  PNPM_VERSION = "10"
+  # BASE_PATH must be "/" for a Netlify root deployment (no sub-path prefix).
+  BASE_PATH = "/"
+  # PORT is unused at build time; a value is required to satisfy vite.config.ts.
+  PORT = "3000"
+
+[functions]
+  # Netlify Functions v2 — the /api/* proxy lives here.
+  directory    = "netlify/functions"
+  node_bundler = "esbuild"
+
+# SPA fallback — catches every route not matched by the function or a real file.
+# Must be last.
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200

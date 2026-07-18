@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#060608" />
+  <title>AviStream — No Connection</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #060608;
+      --card: #0f0f12;
+      --border: rgba(255,255,255,0.07);
+      --primary: #e02020;
+      --text: rgba(255,255,255,0.85);
+      --muted: rgba(255,255,255,0.35);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      overflow: hidden;
+    }
+
+    /* Animated background orbs */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.10;
+      animation: drift 9s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+    .orb-1 { width: 500px; height: 500px; background: #e02020; top: -150px; left: -150px; animation-delay: 0s; }
+    .orb-2 { width: 350px; height: 350px; background: #7c0000; bottom: -100px; right: -100px; animation-delay: -4s; }
+
+    @keyframes drift {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(35px, 25px) scale(1.06); }
+    }
+
+    .page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      padding: 2rem 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Logo */
+    .logo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 2.5rem;
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards;
+    }
+    .logo img {
+      width: 140px;
+      height: 140px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 30px rgba(224,32,32,0.4));
+    }
+
+    /* WiFi-off icon + pulse ring */
+    .icon-wrap {
+      position: relative;
+      width: 120px; height: 120px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 2rem;
+      opacity: 0;
+      animation: fadeUp 0.6s 0.15s ease forwards;
+    }
+    .pulse-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid rgba(224,32,32,0.3);
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+    .pulse-ring:nth-child(2) { animation-delay: 0.8s; }
+    .pulse-ring:nth-child(3) { animation-delay: 1.6s; }
+    @keyframes pulse {
+      0%   { transform: scale(0.85); opacity: 0.6; }
+      100% { transform: scale(1.4);  opacity: 0;   }
+    }
+    .icon-circle {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: rgba(224,32,32,0.1);
+      border: 1px solid rgba(224,32,32,0.3);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1;
+    }
+    .icon-circle svg { width: 36px; height: 36px; color: var(--primary); }
+
+    h1 {
+      font-size: clamp(1.5rem, 5vw, 2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      text-align: center;
+      margin-bottom: 0.75rem;
+      opacity: 0;
+      animation: fadeUp 0.6s 0.25s ease forwards;
+    }
+    p {
+      font-size: 0.95rem;
+      color: var(--muted);
+      text-align: center;
+      max-width: 300px;
+      line-height: 1.6;
+      margin-bottom: 2.5rem;
+      opacity: 0;
+      animation: fadeUp 0.6s 0.35s ease forwards;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0.75rem 1.75rem;
+      border-radius: 9999px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.2s, transform 0.15s;
+      opacity: 0;
+      animation: fadeUp 0.6s 0.45s ease forwards;
+    }
+    .btn:hover  { opacity: 0.88; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn.loading { pointer-events: none; opacity: 0.65; }
+    .btn svg { animation: none; }
+    .btn.loading svg { animation: spin 0.8s linear infinite; }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      opacity: 0;
+      animation: fadeUp 0.6s 0.55s ease forwards;
+    }
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+    .dot.online { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.25); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <main class="page">
+    <!-- Logo -->
+    <div class="logo">
+      <img src="/icons/icon-512.png" alt="AviStream" />
+    </div>
+
+    <!-- WiFi-off icon -->
+    <div class="icon-wrap">
+      <div class="pulse-ring"></div>
+      <div class="pulse-ring"></div>
+      <div class="pulse-ring"></div>
+      <div class="icon-circle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <line x1="1" y1="1" x2="23" y2="23"/>
+          <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+          <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+          <path d="M10.71 5.05A16 16 0 0 1 22.56 9"/>
+          <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+          <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+          <line x1="12" y1="20" x2="12.01" y2="20"/>
+        </svg>
+      </div>
+    </div>
+
+    <h1>No Internet Connection</h1>
+    <p>AviStream requires internet to stream anime and movies. Connect to Wi‑Fi or mobile data to continue.</p>
+
+    <button class="btn" id="retryBtn" onclick="retry()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1 4 1 10 7 10"/>
+        <path d="M3.51 15a9 9 0 1 0 .49-4.97"/>
+      </svg>
+      <span>Try Again</span>
+    </button>
+
+    <div class="status-bar">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusText">No connection</span>
+    </div>
+  </main>
+
+  <script>
+    let checking = false;
+
+    function retry() {
+      if (checking) return;
+      checking = true;
+      const btn = document.getElementById('retryBtn');
+      btn.classList.add('loading');
+      btn.querySelector('svg').innerHTML = '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>';
+      btn.querySelector('span').textContent = 'Checking…';
+
+      setTimeout(() => {
+        if (navigator.onLine) {
+          window.location.reload();
+        } else {
+          checking = false;
+          btn.classList.remove('loading');
+          btn.querySelector('svg').innerHTML = '<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.97"/>';
+          btn.querySelector('span').textContent = 'Try Again';
+        }
+      }, 1500);
+    }
+
+    function updateStatus() {
+      const dot  = document.getElementById('statusDot');
+      const text = document.getElementById('statusText');
+      if (navigator.onLine) {
+        dot.className  = 'dot online';
+        text.textContent = 'Back online — reloading…';
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        dot.className  = 'dot';
+        text.textContent = 'No connection';
+      }
+    }
+
+    window.addEventListener('online',  updateStatus);
+    window.addEventListener('offline', updateStatus);
+    updateStatus();
+  </script>
+</body>
+</html>

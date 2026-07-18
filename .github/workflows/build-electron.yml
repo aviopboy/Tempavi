@@ -1,0 +1,80 @@
+name: Build AviStream Desktop Apps (.deb & .exe)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'artifacts/electron-app/**'
+      - '.github/workflows/build-electron.yml'
+  workflow_dispatch:
+
+jobs:
+  # ── Linux .deb ──────────────────────────────────────────────────────────────
+  build-linux:
+    name: Build Linux (.deb)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: artifacts/electron-app
+        run: npm install
+
+      - name: Build .deb
+        working-directory: artifacts/electron-app
+        run: npm run dist:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: avistream-linux-deb
+          path: artifacts/electron-app/dist-electron/*.deb
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: avistream-linux-appimage
+          path: artifacts/electron-app/dist-electron/*.AppImage
+          retention-days: 30
+          if-no-files-found: warn
+
+  # ── Windows .exe ────────────────────────────────────────────────────────────
+  build-windows:
+    name: Build Windows (.exe)
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: artifacts/electron-app
+        run: npm install
+
+      - name: Build .exe installer
+        working-directory: artifacts/electron-app
+        run: npm run dist:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload .exe installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: avistream-windows-installer
+          path: artifacts/electron-app/dist-electron/*.exe
+          retention-days: 30
+          if-no-files-found: error

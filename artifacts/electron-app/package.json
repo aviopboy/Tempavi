@@ -1,0 +1,63 @@
+{
+  "name": "avistream",
+  "productName": "AviStream",
+  "version": "1.0.0",
+  "description": "Anime. Anytime. Anywhere.",
+  "main": "main.js",
+  "author": "AviStream",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist:linux": "electron-builder --linux deb AppImage",
+    "dist:win": "electron-builder --win nsis portable",
+    "dist:all": "electron-builder --linux deb AppImage --win nsis portable"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.avistream.app",
+    "productName": "AviStream",
+    "copyright": "Copyright © 2025 AviStream",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "offline.html",
+      "icons/**"
+    ],
+    "linux": {
+      "target": [
+        { "target": "deb",      "arch": ["x64", "arm64"] },
+        { "target": "AppImage", "arch": ["x64", "arm64"] }
+      ],
+      "category": "Video",
+      "icon": "icons/icon-512.png",
+      "desktop": {
+        "Name": "AviStream",
+        "Comment": "Anime. Anytime. Anywhere.",
+        "Categories": "Video;AudioVideo;"
+      }
+    },
+    "win": {
+      "target": [
+        { "target": "nsis",     "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "icons/icon-512.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AviStream"
+    },
+    "publish": null
+  }
+}

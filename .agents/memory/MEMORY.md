@@ -1,0 +1,4 @@
+- [Clerk Auth Setup](clerk-auth-setup.md) — Replit-managed Clerk provisioned; key wiring, proxy, and Tailwind v4 layer order details.
+- [AviStream Watch Progress](watch-progress.md) — localStorage-based tracker; wall-clock elapsed time, WATCHED_THRESHOLD=0.85, seriesInfo dep in tracker effect.
+- [Cloud Sync Design](cloud-sync.md) — write-through pattern; SYNC_EVENT broadcasts localStorage changes so hooks refresh without prop drilling.
+- [Express v5 Params Typing](express-v5-params.md) — req.params values typed as string | string[]; use String(req.params.x) before passing to Drizzle eq().
