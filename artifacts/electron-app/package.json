@@ -18,6 +18,9 @@
     "electron": "^35.0.0",
     "electron-builder": "^26.0.12"
   },
+  "overrides": {
+    "@noble/hashes": "^1.6.1"
+  },
   "build": {
     "appId": "com.avistream.app",
     "productName": "AviStream",
