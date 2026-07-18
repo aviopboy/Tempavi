@@ -4,7 +4,11 @@
   "version": "1.0.0",
   "description": "Anime. Anytime. Anywhere.",
   "main": "main.js",
-  "author": "AviStream",
+  "homepage": "https://github.com/aviopboy/Tempavi",
+  "author": {
+    "name": "AviStream",
+    "email": "avistream@avistream.app"
+  },
   "license": "MIT",
   "private": true,
   "scripts": {
