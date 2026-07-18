@@ -2,8 +2,7 @@ const { app, BrowserWindow, Menu, shell, ipcMain, nativeTheme } = require("elect
 const path = require("path");
 const { net } = require("electron");
 
-// The hosted AviStream URL — replace with your production domain when deployed
-const AVISTREAM_URL = process.env.AVISTREAM_URL || "https://avistream.replit.app";
+const AVISTREAM_URL = process.env.AVISTREAM_URL || "https://avistream.netlify.app";
 
 nativeTheme.themeSource = "dark";
 

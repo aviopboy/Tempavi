@@ -29,6 +29,7 @@
     "appId": "com.avistream.app",
     "productName": "AviStream",
     "copyright": "Copyright © 2025 AviStream",
+    "artifactName": "${productName}.${ext}",
     "directories": {
       "output": "dist-electron"
     },
