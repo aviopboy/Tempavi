@@ -32,7 +32,7 @@ function forceWebMode() {
 function triggerAndroidIntent() {
   const fallback = encodeURIComponent(STORE_URL);
   const intent =
-    `intent://${window.location.host}${window.location.pathname}` +
+    `intent://tempavistream.netlify.app${window.location.pathname}` +
     `#Intent;scheme=https;package=${APP_PACKAGE};` +
     `S.browser_fallback_url=${fallback};end`;
   window.location.href = intent;

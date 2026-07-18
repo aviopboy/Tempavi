@@ -2,7 +2,7 @@ const { app, BrowserWindow, Menu, shell, ipcMain, nativeTheme } = require("elect
 const path = require("path");
 const { net } = require("electron");
 
-const AVISTREAM_URL = process.env.AVISTREAM_URL || "https://avistream.netlify.app";
+const AVISTREAM_URL = process.env.AVISTREAM_URL || "https://tempavistream.netlify.app";
 
 nativeTheme.themeSource = "dark";
 
