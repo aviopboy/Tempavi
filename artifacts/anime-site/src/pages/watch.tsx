@@ -450,15 +450,23 @@ export default function Watch() {
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const bookmarkBtnRef = useRef<HTMLButtonElement>(null);
 
-  // Detect mobile landscape so the player covers the full screen.
-  // `hover: none` is the reliable proxy for touchscreen devices — desktops always have hover.
-  const [mobileLandscape, setMobileLandscape] = useState(false);
+  // Track mobile + orientation separately so we can fake landscape fullscreen via CSS rotation.
+  const [isMobile, setIsMobile] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia("(orientation: landscape) and (hover: none)");
-    const update = (e: MediaQueryList | MediaQueryListEvent) => setMobileLandscape(e.matches);
-    update(mq);
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
+    const mqTouch = window.matchMedia("(hover: none) and (pointer: coarse)");
+    const mqLand  = window.matchMedia("(orientation: landscape)");
+    const update = () => {
+      setIsMobile(mqTouch.matches);
+      setIsLandscape(mqLand.matches);
+    };
+    update();
+    mqTouch.addEventListener("change", update);
+    mqLand.addEventListener("change", update);
+    return () => {
+      mqTouch.removeEventListener("change", update);
+      mqLand.removeEventListener("change", update);
+    };
   }, []);
 
   // Auto-resume state
@@ -808,27 +816,58 @@ export default function Watch() {
               )}
             </div>
           ) : (
-            <div
-              className={
-                mobileLandscape
-                  ? "fixed inset-0 z-[100] bg-black"
-                  // -mx-4 md:mx-0 breaks out of the container's px-4 padding so the player
-                  // is truly edge-to-edge on mobile; md and up keep the normal layout
-                  : "w-full -mx-4 md:mx-0 overflow-hidden bg-black"
-              }
-            >
-              <div className={mobileLandscape ? "w-full h-full" : "aspect-video w-full"}>
-                {/* sandbox without allow-popups blocks new-tab/window ads from the player */}
-                <iframe
-                  src={playerUrl!}
-                  allow="fullscreen; autoplay"
-                  allowFullScreen
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-                  className="w-full h-full border-0"
-                  title="Player"
-                />
-              </div>
-            </div>
+            <>
+              {/* ── Mobile player ── */}
+              {isMobile && (
+                <div
+                  style={
+                    isLandscape
+                      ? /* Real landscape — fill the whole screen */
+                        { position: "fixed", inset: 0, zIndex: 100, background: "#000" }
+                      : /* Portrait — rotate+scale to fake landscape fullscreen without the user
+                           needing to tilt the phone. width/height are intentionally swapped:
+                           after rotate(90deg) the visual dimensions become 100dvw × 100dvh. */
+                        {
+                          position: "fixed",
+                          zIndex: 100,
+                          top: "50%",
+                          left: "50%",
+                          width: "100dvh",
+                          height: "100dvw",
+                          transform: "translate(-50%, -50%) rotate(90deg)",
+                          background: "#000",
+                        }
+                  }
+                >
+                  {/* sandbox without allow-popups blocks ads/pop-ups from the player */}
+                  <iframe
+                    src={playerUrl!}
+                    allow="fullscreen; autoplay"
+                    allowFullScreen
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+                    className="w-full h-full border-0"
+                    title="Player"
+                  />
+                </div>
+              )}
+
+              {/* ── Desktop player ── */}
+              {!isMobile && (
+                <div className="w-full overflow-hidden bg-black"
+                  style={{ boxShadow: "0 0 80px -20px hsl(var(--primary) / 0.2)" }}>
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src={playerUrl!}
+                      allow="fullscreen; autoplay"
+                      allowFullScreen
+                      sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+                      className="w-full h-full border-0"
+                      title="Player"
+                    />
+                  </div>
+                </div>
+              )}
+            </>)
           )}
         </div>
 
