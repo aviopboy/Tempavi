@@ -30,6 +30,14 @@
                 <data android:scheme="https" android:host="tempavistream.netlify.app" />
             </intent-filter>
 
+            <!-- Custom scheme: lets web pages detect / open the installed app -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="avistream" />
+            </intent-filter>
+
         </activity>
 
         <provider
