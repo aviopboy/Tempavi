@@ -450,6 +450,17 @@ export default function Watch() {
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const bookmarkBtnRef = useRef<HTMLButtonElement>(null);
 
+  // Detect mobile landscape so the player fills the whole screen
+  const [mobileLandscape, setMobileLandscape] = useState(false);
+  useEffect(() => {
+    // "mobile landscape" = orientation landscape AND short viewport (phones, not desktops)
+    const mq = window.matchMedia("(orientation: landscape) and (max-height: 500px)");
+    const update = (e: MediaQueryList | MediaQueryListEvent) => setMobileLandscape(e.matches);
+    update(mq);
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
   // Auto-resume state
   const [resumeFrom, setResumeFrom] = useState<string | null>(null);
 
@@ -797,11 +808,20 @@ export default function Watch() {
               )}
             </div>
           ) : (
-            <div className="w-full rounded-2xl overflow-hidden bg-black ring-1 ring-white/10"
-              style={{ boxShadow: "0 0 80px -20px hsl(var(--primary) / 0.2)" }}>
-              <div className="aspect-video w-full">
-                <iframe src={playerUrl!} allow="fullscreen; autoplay" allowFullScreen
-                  className="w-full h-full border-0" title="Player" />
+            <div
+              className={mobileLandscape ? "fixed inset-0 z-50 bg-black" : "w-full overflow-hidden bg-black"}
+              style={mobileLandscape ? {} : { boxShadow: "0 0 80px -20px hsl(var(--primary) / 0.2)" }}
+            >
+              <div className={mobileLandscape ? "w-full h-full" : "aspect-video w-full"}>
+                {/* sandbox without allow-popups blocks new-tab/window ads from the player */}
+                <iframe
+                  src={playerUrl!}
+                  allow="fullscreen; autoplay"
+                  allowFullScreen
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+                  className="w-full h-full border-0"
+                  title="Player"
+                />
               </div>
             </div>
           )}
