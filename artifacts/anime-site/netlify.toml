@@ -1,3 +1,13 @@
+[build]
+  command = "pnpm --filter @workspace/anime-site run build"
+  publish = "artifacts/anime-site/dist/public"
+
+[build.environment]
+  BASE_PATH = "/"
+  PORT = "3000"
+  VITE_CLERK_PUBLISHABLE_KEY = "pk_test_ZGVjaWRpbmctZ2VsZGluZy0yOS5jbGVyay5hY2NvdW50cy5kZXYk"
+  VITE_CLERK_PROXY_URL = ""
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
