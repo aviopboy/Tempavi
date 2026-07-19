@@ -456,28 +456,6 @@ export default function Watch() {
     setIsMobile(window.matchMedia("(hover: none) and (pointer: coarse)").matches);
   }, []);
 
-  // When the player URL is ready on a touch device, lock screen to landscape so the
-  // user never has to rotate the phone manually. Called from the top frame so the
-  // iframe sandbox cannot interfere. Unlocked when leaving the watch page.
-  useEffect(() => {
-    if (!isMobile || !playerUrl) return;
-    let locked = false;
-    (async () => {
-      try {
-        // Some browsers need fullscreen first; try without it first (works on Chrome Android).
-        await screen.orientation.lock("landscape");
-        locked = true;
-      } catch {
-        // Not supported (e.g. iOS) — user can still rotate manually.
-      }
-    })();
-    return () => {
-      if (locked) {
-        try { screen.orientation.unlock(); } catch { /**/ }
-      }
-    };
-  }, [isMobile, playerUrl]);
-
   // Auto-resume state
   const [resumeFrom, setResumeFrom] = useState<string | null>(null);
 
@@ -576,6 +554,27 @@ export default function Watch() {
   const isLoading = isMovie ? seriesLoading : epLoading;
   const playerUrl = isMovie ? moviePlayerUrl : episode?.video_player ?? null;
   const showError = !isLoading && !playerUrl;
+
+  // When the player URL is ready on a touch device, lock screen to landscape so the
+  // user never has to rotate the phone manually. Unlocked when leaving the watch page.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (!isMobile || !playerUrl) return;
+    let locked = false;
+    (async () => {
+      try {
+        await screen.orientation.lock("landscape");
+        locked = true;
+      } catch {
+        // Not supported (e.g. iOS) — user can still rotate manually.
+      }
+    })();
+    return () => {
+      if (locked) {
+        try { screen.orientation.unlock(); } catch { /**/ }
+      }
+    };
+  }, [isMobile, playerUrl]);
   const dubUnavailable = !isMovie && isDub && (epError || !episode?.video_player);
 
   const seasonEpisodes: FlatEpisode[] = (seriesInfo?.episodes ?? []).filter((ep) => ep.season === currentSeason);
