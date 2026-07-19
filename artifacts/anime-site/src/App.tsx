@@ -25,25 +25,16 @@ const queryClient = new QueryClient();
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-// publishableKeyFromHost rewrites the key for the Replit proxy.
-// On any other host (Netlify, APK WebView, etc.) use the key as-is.
-const isReplitHost =
-  window.location.hostname.endsWith(".repl.co") ||
-  window.location.hostname.endsWith(".replit.dev") ||
-  window.location.hostname.endsWith(".repl.run") ||
-  window.location.hostname.endsWith(".replit.app");
+// REQUIRED — resolves the key from the current hostname so the same build
+// works across Replit dev, Replit prod, Netlify, and APK WebViews.
+const clerkPubKey = publishableKeyFromHost(
+  window.location.hostname,
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+);
 
-const clerkPubKey = isReplitHost
-  ? publishableKeyFromHost(
-      window.location.hostname,
-      import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
-    )
-  : import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-
-// Proxy only on Replit; empty string = no proxy everywhere else.
-const clerkProxyUrl = isReplitHost
-  ? import.meta.env.VITE_CLERK_PROXY_URL
-  : undefined;
+// REQUIRED — empty in dev (Clerk hits FAPI directly), auto-set in prod.
+// Must be unconditional — do NOT gate on host or NODE_ENV.
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 
 function stripBase(path: string): string {
   return basePath && path.startsWith(basePath)
