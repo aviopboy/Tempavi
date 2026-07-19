@@ -450,24 +450,33 @@ export default function Watch() {
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const bookmarkBtnRef = useRef<HTMLButtonElement>(null);
 
-  // Track mobile + orientation separately so we can fake landscape fullscreen via CSS rotation.
+  // Detect touch device once on mount.
   const [isMobile, setIsMobile] = useState(false);
-  const [isLandscape, setIsLandscape] = useState(false);
   useEffect(() => {
-    const mqTouch = window.matchMedia("(hover: none) and (pointer: coarse)");
-    const mqLand  = window.matchMedia("(orientation: landscape)");
-    const update = () => {
-      setIsMobile(mqTouch.matches);
-      setIsLandscape(mqLand.matches);
-    };
-    update();
-    mqTouch.addEventListener("change", update);
-    mqLand.addEventListener("change", update);
-    return () => {
-      mqTouch.removeEventListener("change", update);
-      mqLand.removeEventListener("change", update);
-    };
+    setIsMobile(window.matchMedia("(hover: none) and (pointer: coarse)").matches);
   }, []);
+
+  // When the player URL is ready on a touch device, lock screen to landscape so the
+  // user never has to rotate the phone manually. Called from the top frame so the
+  // iframe sandbox cannot interfere. Unlocked when leaving the watch page.
+  useEffect(() => {
+    if (!isMobile || !playerUrl) return;
+    let locked = false;
+    (async () => {
+      try {
+        // Some browsers need fullscreen first; try without it first (works on Chrome Android).
+        await screen.orientation.lock("landscape");
+        locked = true;
+      } catch {
+        // Not supported (e.g. iOS) — user can still rotate manually.
+      }
+    })();
+    return () => {
+      if (locked) {
+        try { screen.orientation.unlock(); } catch { /**/ }
+      }
+    };
+  }, [isMobile, playerUrl]);
 
   // Auto-resume state
   const [resumeFrom, setResumeFrom] = useState<string | null>(null);
@@ -815,59 +824,34 @@ export default function Watch() {
                 </Button>
               )}
             </div>
+          ) : isMobile ? (
+            /* Mobile: fixed fullscreen — orientation lock above rotates the device to landscape */
+            <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "#000" }}>
+              <iframe
+                src={playerUrl!}
+                allow="fullscreen; autoplay"
+                allowFullScreen
+                sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+                className="w-full h-full border-0"
+                title="Player"
+              />
+            </div>
           ) : (
-            <>
-              {/* ── Mobile player ── */}
-              {isMobile && (
-                <div
-                  style={
-                    isLandscape
-                      ? /* Real landscape — fill the whole screen */
-                        { position: "fixed", inset: 0, zIndex: 100, background: "#000" }
-                      : /* Portrait — rotate+scale to fake landscape fullscreen without the user
-                           needing to tilt the phone. width/height are intentionally swapped:
-                           after rotate(90deg) the visual dimensions become 100dvw × 100dvh. */
-                        {
-                          position: "fixed",
-                          zIndex: 100,
-                          top: "50%",
-                          left: "50%",
-                          width: "100dvh",
-                          height: "100dvw",
-                          transform: "translate(-50%, -50%) rotate(90deg)",
-                          background: "#000",
-                        }
-                  }
-                >
-                  {/* sandbox without allow-popups blocks ads/pop-ups from the player */}
-                  <iframe
-                    src={playerUrl!}
-                    allow="fullscreen; autoplay"
-                    allowFullScreen
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-                    className="w-full h-full border-0"
-                    title="Player"
-                  />
-                </div>
-              )}
-
-              {/* ── Desktop player ── */}
-              {!isMobile && (
-                <div className="w-full overflow-hidden bg-black"
-                  style={{ boxShadow: "0 0 80px -20px hsl(var(--primary) / 0.2)" }}>
-                  <div className="aspect-video w-full">
-                    <iframe
-                      src={playerUrl!}
-                      allow="fullscreen; autoplay"
-                      allowFullScreen
-                      sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-                      className="w-full h-full border-0"
-                      title="Player"
-                    />
-                  </div>
-                </div>
-              )}
-            </>)
+            /* Desktop: normal aspect-ratio layout */
+            <div className="w-full overflow-hidden bg-black"
+              style={{ boxShadow: "0 0 80px -20px hsl(var(--primary) / 0.2)" }}>
+              <div className="aspect-video w-full">
+                <iframe
+                  src={playerUrl!}
+                  allow="fullscreen; autoplay"
+                  allowFullScreen
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+                  className="w-full h-full border-0"
+                  title="Player"
+                />
+              </div>
+            </div>
+          )
           )}
         </div>
 
