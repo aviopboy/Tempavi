@@ -852,7 +852,7 @@ export default function Watch() {
               </div>
             </div>
           )
-          )}
+        }
         </div>
 
         {/* Seek hint banner */}
