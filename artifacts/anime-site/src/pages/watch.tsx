@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { createPortal } from "react-dom";
 import { useRoute, Link, useLocation } from "wouter";
 import { useUser } from "@clerk/react";
@@ -450,11 +451,31 @@ export default function Watch() {
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const bookmarkBtnRef = useRef<HTMLButtonElement>(null);
 
-  // Detect touch device once on mount.
-  const [isMobile, setIsMobile] = useState(false);
+  // Lock screen to landscape when the watch page is open.
+  // Native app: uses Capacitor ScreenOrientation plugin (works in WebView).
+  // Web browser: uses screen.orientation.lock (works on Chrome Android in fullscreen).
+  // Unlocks on page exit so the rest of the app stays in portrait.
+  const isNative = typeof (window as any).Capacitor !== "undefined" &&
+    (window as any).Capacitor?.isNativePlatform?.();
   useEffect(() => {
-    setIsMobile(window.matchMedia("(hover: none) and (pointer: coarse)").matches);
-  }, []);
+    let unlocked = false;
+    if (isNative) {
+      ScreenOrientation.lock({ orientation: "landscape" }).catch(() => {/* unsupported */});
+      return () => {
+        unlocked = true;
+        ScreenOrientation.unlock().catch(() => {/* unsupported */});
+      };
+    } else {
+      // Web: lock works on Chrome Android when page has user gesture / is in fullscreen
+      try {
+        screen.orientation.lock("landscape").catch(() => {/* not supported */});
+      } catch { /**/ }
+      return () => {
+        if (!unlocked) try { screen.orientation.unlock(); } catch { /**/ }
+        unlocked = true;
+      };
+    }
+  }, [isNative]);
 
   // Auto-resume state
   const [resumeFrom, setResumeFrom] = useState<string | null>(null);
@@ -555,26 +576,6 @@ export default function Watch() {
   const playerUrl = isMovie ? moviePlayerUrl : episode?.video_player ?? null;
   const showError = !isLoading && !playerUrl;
 
-  // When the player URL is ready on a touch device, lock screen to landscape so the
-  // user never has to rotate the phone manually. Unlocked when leaving the watch page.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  useEffect(() => {
-    if (!isMobile || !playerUrl) return;
-    let locked = false;
-    (async () => {
-      try {
-        await screen.orientation.lock("landscape");
-        locked = true;
-      } catch {
-        // Not supported (e.g. iOS) — user can still rotate manually.
-      }
-    })();
-    return () => {
-      if (locked) {
-        try { screen.orientation.unlock(); } catch { /**/ }
-      }
-    };
-  }, [isMobile, playerUrl]);
   const dubUnavailable = !isMovie && isDub && (epError || !episode?.video_player);
 
   const seasonEpisodes: FlatEpisode[] = (seriesInfo?.episodes ?? []).filter((ep) => ep.season === currentSeason);
@@ -823,20 +824,11 @@ export default function Watch() {
                 </Button>
               )}
             </div>
-          ) : isMobile ? (
-            /* Mobile: fixed fullscreen — orientation lock above rotates the device to landscape */
-            <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "#000" }}>
-              <iframe
-                src={playerUrl!}
-                allow="fullscreen; autoplay"
-                allowFullScreen
-                sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-                className="w-full h-full border-0"
-                title="Player"
-              />
-            </div>
           ) : (
-            /* Desktop: normal aspect-ratio layout */
+            /* Player — aspect-video on all platforms.
+               On native app the Capacitor ScreenOrientation plugin rotates the device
+               to landscape so this fills the screen correctly.
+               On Chrome Android the player's own fullscreen button triggers landscape. */
             <div className="w-full overflow-hidden bg-black"
               style={{ boxShadow: "0 0 80px -20px hsl(var(--primary) / 0.2)" }}>
               <div className="aspect-video w-full">

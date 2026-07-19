@@ -80,6 +80,7 @@
     "@capacitor/cli": "^8.4.1",
     "@capacitor/core": "^8.4.1",
     "@capacitor/network": "^8.0.1",
+    "@capacitor/screen-orientation": "^8.0.1",
     "@clerk/react": "^6.11.3",
     "@clerk/themes": "^2.4.57"
   }
