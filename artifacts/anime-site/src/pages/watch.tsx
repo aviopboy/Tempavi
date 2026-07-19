@@ -450,11 +450,11 @@ export default function Watch() {
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const bookmarkBtnRef = useRef<HTMLButtonElement>(null);
 
-  // Detect mobile landscape so the player fills the whole screen
+  // Detect mobile landscape so the player covers the full screen.
+  // `hover: none` is the reliable proxy for touchscreen devices — desktops always have hover.
   const [mobileLandscape, setMobileLandscape] = useState(false);
   useEffect(() => {
-    // "mobile landscape" = orientation landscape AND short viewport (phones, not desktops)
-    const mq = window.matchMedia("(orientation: landscape) and (max-height: 500px)");
+    const mq = window.matchMedia("(orientation: landscape) and (hover: none)");
     const update = (e: MediaQueryList | MediaQueryListEvent) => setMobileLandscape(e.matches);
     update(mq);
     mq.addEventListener("change", update);
@@ -809,8 +809,13 @@ export default function Watch() {
             </div>
           ) : (
             <div
-              className={mobileLandscape ? "fixed inset-0 z-50 bg-black" : "w-full overflow-hidden bg-black"}
-              style={mobileLandscape ? {} : { boxShadow: "0 0 80px -20px hsl(var(--primary) / 0.2)" }}
+              className={
+                mobileLandscape
+                  ? "fixed inset-0 z-[100] bg-black"
+                  // -mx-4 md:mx-0 breaks out of the container's px-4 padding so the player
+                  // is truly edge-to-edge on mobile; md and up keep the normal layout
+                  : "w-full -mx-4 md:mx-0 overflow-hidden bg-black"
+              }
             >
               <div className={mobileLandscape ? "w-full h-full" : "aspect-video w-full"}>
                 {/* sandbox without allow-popups blocks new-tab/window ads from the player */}
