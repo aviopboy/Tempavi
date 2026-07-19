@@ -15,9 +15,11 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
 function Avatar({ user, size = 80 }: { user: ReturnType<typeof useUser>["user"]; size?: number }) {
-  const initials = [user?.firstName, user?.lastName]
+  const firstName = (user?.unsafeMetadata?.firstName as string) || user?.firstName || "";
+  const lastName = (user?.unsafeMetadata?.lastName as string) || user?.lastName || "";
+  const initials = [firstName, lastName]
     .filter(Boolean)
-    .map((n) => n![0])
+    .map((n) => n[0])
     .join("")
     .toUpperCase() || user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || "?";
 
@@ -334,7 +336,7 @@ export default function Account() {
                 <>
                   <div>
                     <h1 className="text-2xl font-extrabold text-white tracking-tight">
-                      {[user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Your Account"}
+                      {[(user?.unsafeMetadata?.firstName as string) || user?.firstName, (user?.unsafeMetadata?.lastName as string) || user?.lastName].filter(Boolean).join(" ") || "Your Account"}
                     </h1>
                     <p className="text-sm text-white/40 mt-0.5">{primaryEmail}</p>
                   </div>
@@ -353,15 +355,23 @@ export default function Account() {
           <SectionCard title="Personal info" icon={User}>
             <EditableField
               label="First name"
-              value={user?.firstName ?? ""}
+              value={((user?.unsafeMetadata?.firstName as string) || user?.firstName) ?? ""}
               placeholder="Enter first name"
-              onSave={async (v) => { await user!.update({ firstName: v }); }}
+              onSave={async (v) => {
+                await user!.update({
+                  unsafeMetadata: { ...user!.unsafeMetadata, firstName: v },
+                });
+              }}
             />
             <EditableField
               label="Last name"
-              value={user?.lastName ?? ""}
+              value={((user?.unsafeMetadata?.lastName as string) || user?.lastName) ?? ""}
               placeholder="Enter last name"
-              onSave={async (v) => { await user!.update({ lastName: v }); }}
+              onSave={async (v) => {
+                await user!.update({
+                  unsafeMetadata: { ...user!.unsafeMetadata, lastName: v },
+                });
+              }}
             />
             <div className="py-4 border-b last:border-0" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
               <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: "rgba(255,255,255,0.35)" }}>Email</p>

@@ -29,8 +29,10 @@ export default function Onboarding() {
   // Pre-fill if Clerk already has values
   useEffect(() => {
     if (user) {
-      if (user.firstName) setFirstName(user.firstName);
-      if (user.lastName) setLastName(user.lastName);
+      const fn = (user.unsafeMetadata?.firstName as string) || user.firstName || "";
+      const ln = (user.unsafeMetadata?.lastName as string) || user.lastName || "";
+      if (fn) setFirstName(fn);
+      if (ln) setLastName(ln);
       const saved = user.unsafeMetadata?.username as string | undefined;
       if (saved) setUsername(saved);
     }
@@ -60,10 +62,10 @@ export default function Onboarding() {
     setSaving(true);
     try {
       await user!.update({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
         unsafeMetadata: {
           ...user!.unsafeMetadata,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
           username: username.trim().toLowerCase(),
           onboardingComplete: true,
         },

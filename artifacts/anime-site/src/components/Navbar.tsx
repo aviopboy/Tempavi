@@ -33,9 +33,11 @@ type NavbarProps = {
 // Small avatar for navbar
 function NavAvatar() {
   const { user } = useUser();
-  const initials = [user?.firstName, user?.lastName]
+  const firstName = (user?.unsafeMetadata?.firstName as string) || user?.firstName || "";
+  const lastName = (user?.unsafeMetadata?.lastName as string) || user?.lastName || "";
+  const initials = [firstName, lastName]
     .filter(Boolean)
-    .map((n) => n![0])
+    .map((n) => n[0])
     .join("")
     .toUpperCase() || user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || "?";
 

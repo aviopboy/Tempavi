@@ -15,8 +15,10 @@ type Tab = "appearance" | "account";
 // ── Small avatar for Settings panel ─────────────────────────────────────────
 function MiniAvatar() {
   const { user } = useUser();
-  const initials = [user?.firstName, user?.lastName]
-    .filter(Boolean).map((n) => n![0]).join("").toUpperCase()
+  const firstName = (user?.unsafeMetadata?.firstName as string) || user?.firstName || "";
+  const lastName = (user?.unsafeMetadata?.lastName as string) || user?.lastName || "";
+  const initials = [firstName, lastName]
+    .filter(Boolean).map((n) => n[0]).join("").toUpperCase()
     || user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || "?";
 
   if (user?.imageUrl) {
@@ -48,7 +50,7 @@ function AccountTab({ onClose }: { onClose: () => void }) {
             )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-white truncate">
-                {[user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Your Account"}
+                {[(user?.unsafeMetadata?.firstName as string) || user?.firstName, (user?.unsafeMetadata?.lastName as string) || user?.lastName].filter(Boolean).join(" ") || "Your Account"}
               </p>
               <p className="text-xs text-white/40 truncate mt-0.5">
                 {user?.primaryEmailAddress?.emailAddress}
