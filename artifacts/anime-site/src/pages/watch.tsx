@@ -451,30 +451,23 @@ export default function Watch() {
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const bookmarkBtnRef = useRef<HTMLButtonElement>(null);
 
-  // Lock screen to landscape when the watch page is open.
-  // Native app: uses Capacitor ScreenOrientation plugin (works in WebView).
-  // Web browser: uses screen.orientation.lock (works on Chrome Android in fullscreen).
-  // Unlocks on page exit so the rest of the app stays in portrait.
   const isNative = typeof (window as any).Capacitor !== "undefined" &&
-    (window as any).Capacitor?.isNativePlatform?.();
+    !!(window as any).Capacitor?.isNativePlatform?.();
+
+  // Track whether the native orientation lock actually succeeded.
+  // If it fails (plugin not yet in APK), we fall back to CSS rotation.
+  // If it succeeds, the device physically rotates so no CSS trick needed.
+  const [nativeLockOk, setNativeLockOk] = useState(false);
+
   useEffect(() => {
-    let unlocked = false;
-    if (isNative) {
-      ScreenOrientation.lock({ orientation: "landscape" }).catch(() => {/* unsupported */});
-      return () => {
-        unlocked = true;
-        ScreenOrientation.unlock().catch(() => {/* unsupported */});
-      };
-    } else {
-      // Web: lock works on Chrome Android when page has user gesture / is in fullscreen
-      try {
-        screen.orientation.lock("landscape").catch(() => {/* not supported */});
-      } catch { /**/ }
-      return () => {
-        if (!unlocked) try { screen.orientation.unlock(); } catch { /**/ }
-        unlocked = true;
-      };
-    }
+    if (!isNative) return;
+    ScreenOrientation.lock({ orientation: "landscape" })
+      .then(() => setNativeLockOk(true))
+      .catch(() => setNativeLockOk(false)); // plugin not bridged yet → use CSS fallback
+    return () => {
+      ScreenOrientation.unlock().catch(() => {/* ignore */});
+      setNativeLockOk(false);
+    };
   }, [isNative]);
 
   // Auto-resume state
@@ -824,11 +817,40 @@ export default function Watch() {
                 </Button>
               )}
             </div>
+          ) : (isNative && !nativeLockOk) ? (
+            /* Native app WITHOUT orientation plugin bridged yet:
+               CSS-rotate the iframe 90° inside a fixed overlay so it visually
+               fills the landscape viewport even though the WebView is portrait.
+               Touch events are correctly mapped to visual positions by the engine.
+               Once the APK is rebuilt with cap sync, nativeLockOk becomes true
+               and we fall through to the normal aspect-video layout below. */
+            <div style={{
+              position: "fixed", inset: 0, zIndex: 1000, background: "#000",
+              overflow: "hidden",
+            }}>
+              <div style={{
+                position: "absolute",
+                /* Landscape size = swap portrait W/H via 100vw/100vh */
+                width: "100vh",
+                height: "100vw",
+                /* Center it in the portrait viewport, then rotate */
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%) rotate(90deg)",
+                transformOrigin: "center center",
+              }}>
+                <iframe
+                  src={playerUrl!}
+                  allow="fullscreen; autoplay"
+                  allowFullScreen
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+                  style={{ width: "100%", height: "100%", border: "none", display: "block" }}
+                  title="Player"
+                />
+              </div>
+            </div>
           ) : (
-            /* Player — aspect-video on all platforms.
-               On native app the Capacitor ScreenOrientation plugin rotates the device
-               to landscape so this fills the screen correctly.
-               On Chrome Android the player's own fullscreen button triggers landscape. */
+            /* Web (desktop + mobile Chrome) and native with orientation lock active */
             <div className="w-full overflow-hidden bg-black"
               style={{ boxShadow: "0 0 80px -20px hsl(var(--primary) / 0.2)" }}>
               <div className="aspect-video w-full">
