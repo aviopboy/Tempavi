@@ -25,14 +25,25 @@ const queryClient = new QueryClient();
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-// REQUIRED — copy verbatim
-const clerkPubKey = publishableKeyFromHost(
-  window.location.hostname,
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
-);
+// publishableKeyFromHost rewrites the key for the Replit proxy.
+// On any other host (Netlify, APK WebView, etc.) use the key as-is.
+const isReplitHost =
+  window.location.hostname.endsWith(".repl.co") ||
+  window.location.hostname.endsWith(".replit.dev") ||
+  window.location.hostname.endsWith(".repl.run") ||
+  window.location.hostname.endsWith(".replit.app");
 
-// REQUIRED — empty in dev, auto-set in prod
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const clerkPubKey = isReplitHost
+  ? publishableKeyFromHost(
+      window.location.hostname,
+      import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+    )
+  : import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+// Proxy only on Replit; empty string = no proxy everywhere else.
+const clerkProxyUrl = isReplitHost
+  ? import.meta.env.VITE_CLERK_PROXY_URL
+  : undefined;
 
 function stripBase(path: string): string {
   return basePath && path.startsWith(basePath)

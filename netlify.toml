@@ -22,6 +22,10 @@
   BASE_PATH = "/"
   # PORT is unused at build time; a value is required to satisfy vite.config.ts.
   PORT = "3000"
+  # Clerk publishable key — public, safe to commit.
+  VITE_CLERK_PUBLISHABLE_KEY = "pk_test_ZGVjaWRpbmctZ2VsZGluZy0yOS5jbGVyay5hY2NvdW50cy5kZXYk"
+  # No proxy on Netlify — Clerk talks to its CDN directly.
+  VITE_CLERK_PROXY_URL = ""
 
 [functions]
   # Netlify Functions v2 — the /api/* proxy lives here.
