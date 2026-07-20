@@ -459,6 +459,19 @@ export default function Watch() {
   // If it succeeds, the device physically rotates so no CSS trick needed.
   const [nativeLockOk, setNativeLockOk] = useState(false);
 
+  // Physical screen dimensions for the CSS-rotation fallback.
+  // window.screen.width/height gives hardware pixels regardless of
+  // viewport/safe-area quirks in Capacitor WebViews.
+  const [screenDims, setScreenDims] = useState({
+    w: window.screen.width,
+    h: window.screen.height,
+  });
+  useEffect(() => {
+    const update = () => setScreenDims({ w: window.screen.width, h: window.screen.height });
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
   useEffect(() => {
     if (!isNative) return;
     ScreenOrientation.lock({ orientation: "landscape" })
@@ -818,22 +831,20 @@ export default function Watch() {
               )}
             </div>
           ) : (isNative && !nativeLockOk) ? (
-            /* Native app WITHOUT orientation plugin bridged yet:
-               CSS-rotate the iframe 90° inside a fixed overlay so it visually
-               fills the landscape viewport even though the WebView is portrait.
-               Touch events are correctly mapped to visual positions by the engine.
-               Once the APK is rebuilt with cap sync, nativeLockOk becomes true
-               and we fall through to the normal aspect-video layout below. */
+            /* Native app WITHOUT orientation plugin bridged yet.
+               The WebView is locked portrait, so we rotate the iframe 90° in CSS
+               so the video visually fills the screen as if it were landscape.
+               We use window.screen.width/height (hardware pixels) rather than
+               100vw/100vh to avoid status-bar safe-area gaps. */
             <div style={{
               position: "fixed", inset: 0, zIndex: 1000, background: "#000",
               overflow: "hidden",
             }}>
+              {/* Rotated player — sized to hardware screen dims to avoid gaps */}
               <div style={{
                 position: "absolute",
-                /* Landscape size = swap portrait W/H via 100vw/100vh */
-                width: "100vh",
-                height: "100vw",
-                /* Center it in the portrait viewport, then rotate */
+                width: screenDims.h,   // portrait height → landscape width
+                height: screenDims.w,  // portrait width  → landscape height
                 top: "50%",
                 left: "50%",
                 transform: "translate(-50%, -50%) rotate(90deg)",
@@ -848,6 +859,22 @@ export default function Watch() {
                   title="Player"
                 />
               </div>
+
+              {/* Back button — sits above the rotated layer, not rotated itself.
+                  Positioned at portrait top-left so the user can always find it.
+                  Use Android system back (◀) or tap this button to exit. */}
+              <Link href={seriesSlug ? `/series/${seriesSlug}` : "/"}>
+                <button style={{
+                  position: "absolute", top: 16, left: 16, zIndex: 1010,
+                  background: "rgba(0,0,0,0.65)", borderRadius: "50%",
+                  width: 44, height: 44,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  border: "1.5px solid rgba(255,255,255,0.25)", cursor: "pointer",
+                  backdropFilter: "blur(4px)",
+                }}>
+                  <ArrowLeft style={{ color: "#fff", width: 22, height: 22 }} />
+                </button>
+              </Link>
             </div>
           ) : (
             /* Web (desktop + mobile Chrome) and native with orientation lock active */
