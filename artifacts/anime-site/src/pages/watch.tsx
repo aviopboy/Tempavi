@@ -454,10 +454,7 @@ export default function Watch() {
   const playerWrapRef = useRef<HTMLDivElement>(null);
 
   // Tracks whether the browser's native Fullscreen API is active.
-  // requestFullscreen() triggers Android immersive mode, hiding the
-  // status bar AND navigation bar so the video fills the physical screen.
   const [isDocFullscreen, setIsDocFullscreen] = useState(false);
-
   useEffect(() => {
     const onChange = () => setIsDocFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", onChange);
@@ -468,19 +465,29 @@ export default function Watch() {
     };
   }, []);
 
-  // Fallback: CSS-rotation portal used when requestFullscreen() isn't
-  // available (e.g. some Capacitor WebView configs).
+  // CSS-rotation portal state.
+  // Viewport dims (innerWidth/innerHeight) are used — NOT screen.width/height.
+  // screen.height includes the system bars, so the rotated div would be
+  // larger than the viewport and cause black letterbox gaps.
   const [mobileFullscreen, setMobileFullscreen] = useState(false);
+  const [vpDims, setVpDims] = useState({ w: window.innerWidth, h: window.innerHeight });
+  useEffect(() => {
+    const update = () => setVpDims({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
 
   const enterFullscreen = useCallback(() => {
     const el = playerWrapRef.current;
     if (!el) { setMobileFullscreen(true); return; }
+    // Snapshot viewport before going fullscreen
+    setVpDims({ w: window.innerWidth, h: window.innerHeight });
     const req: (() => Promise<void>) | undefined =
       el.requestFullscreen?.bind(el) ?? (el as any).webkitRequestFullscreen?.bind(el);
     if (req) {
-      req().catch(() => setMobileFullscreen(true)); // API exists but failed → portal
+      req().catch(() => setMobileFullscreen(true));
     } else {
-      setMobileFullscreen(true); // API not available → portal
+      setMobileFullscreen(true);
     }
   }, []);
 
@@ -943,7 +950,8 @@ export default function Watch() {
               </div>
 
               {/* CSS-portal fallback — used only when requestFullscreen() fails.
-                  Uses screen.width/height (hardware px) to avoid viewport gaps. */}
+                  vpDims captures innerWidth/innerHeight (viewport, not screen)
+                  so the rotated div fits exactly inside the fixed overlay. */}
               {mobileFullscreen && !isDocFullscreen && playerUrl && createPortal(
                 <div style={{
                   position: "fixed", inset: 0, zIndex: 9999,
@@ -951,8 +959,8 @@ export default function Watch() {
                 }}>
                   <div style={{
                     position: "absolute",
-                    width: window.screen.height,
-                    height: window.screen.width,
+                    width: vpDims.h,   // viewport height → landscape width after rotation
+                    height: vpDims.w,  // viewport width  → landscape height after rotation
                     top: "50%", left: "50%",
                     transform: "translate(-50%, -50%) rotate(90deg)",
                   }}>
