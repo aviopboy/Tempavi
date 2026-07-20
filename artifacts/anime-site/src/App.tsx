@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
+import { App as CapApp } from "@capacitor/app";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
@@ -73,6 +74,12 @@ const clerkAppearance = {
     footer: "!shadow-none !border-0 !bg-[#0d0d10] !rounded-none",
     headerTitle: "text-white font-bold",
     headerSubtitle: "text-white/50",
+    // In the native app, social/OAuth buttons open Chrome (Google blocks OAuth
+    // in embedded WebViews). After OAuth, Chrome can't redirect back into the
+    // WebView, so the user gets stranded on the website. Hide them entirely so
+    // only email + password is available inside the app.
+    socialButtonsRoot: isNativeApp ? "!hidden" : "",
+    dividerRow: isNativeApp ? "!hidden" : "",
     socialButtonsBlockButtonText: "text-white/80 font-medium",
     socialButtonsBlockButton: "border-white/10 hover:bg-white/5 bg-white/[0.03]",
     formFieldLabel: "text-white/60 text-sm",
@@ -196,6 +203,23 @@ function Layout() {
 
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
+
+  // Handle deep-link callbacks in the native app (e.g. email verification
+  // links that Android opens in Chrome then hands back via App Links).
+  // We extract the path + query string and push it into wouter's router so
+  // the Clerk component can finish the flow inside the WebView.
+  useEffect(() => {
+    if (!isNativeApp) return;
+    const sub = CapApp.addListener("appUrlOpen", ({ url }) => {
+      try {
+        const parsed = new URL(url);
+        const dest = parsed.pathname + parsed.search + parsed.hash;
+        const stripped = stripBase(dest);
+        if (stripped) setLocation(stripped);
+      } catch { /* malformed URL — ignore */ }
+    });
+    return () => { sub.then(h => h.remove()); };
+  }, [setLocation]);
 
   return (
     <ClerkProvider
