@@ -465,14 +465,36 @@ export default function Watch() {
     return () => window.removeEventListener("resize", update);
   }, [mobileFullscreen]);
 
-  /** Hide or restore Android status bar + navigation bar via our native plugin. */
+  /**
+   * Hide or restore Android status bar + navigation bar.
+   *
+   * Strategy (in order of preference):
+   *  1. Web Fullscreen API — `document.documentElement.requestFullscreen()`
+   *     Works in Android WebView (Chromium) without any APK change.
+   *     { navigationUI: 'hide' } tells Chrome to suppress the nav bar too.
+   *  2. Native ImmersivePlugin (registered in MainActivity.java) — fallback
+   *     for builds that have the plugin; silently skipped if not available.
+   */
   const setImmersive = useCallback((enabled: boolean) => {
     if (!Capacitor.isNativePlatform()) return;
-    try {
-      (Capacitor.Plugins as Record<string, Record<string, () => void>>)
-        .Immersive?.[enabled ? "enter" : "exit"]?.();
-    } catch {
-      // plugin not available on this build — silently ignore
+    if (enabled) {
+      // Primary: Web Fullscreen API (works without APK rebuild)
+      document.documentElement
+        .requestFullscreen?.({ navigationUI: "hide" })
+        .catch(() => {});
+      // Fallback: native plugin (only effective after APK rebuild)
+      try {
+        (Capacitor.Plugins as Record<string, Record<string, () => void>>)
+          .Immersive?.enter?.();
+      } catch { /* not yet registered — safe to ignore */ }
+    } else {
+      if (document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {});
+      }
+      try {
+        (Capacitor.Plugins as Record<string, Record<string, () => void>>)
+          .Immersive?.exit?.();
+      } catch { /* not yet registered — safe to ignore */ }
     }
   }, []);
 
