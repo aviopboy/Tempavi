@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Capacitor } from "@capacitor/core";
 import { createPortal } from "react-dom";
 import { useRoute, Link, useLocation } from "wouter";
 import { useUser } from "@clerk/react";
@@ -452,24 +453,40 @@ export default function Watch() {
 
   // Mobile fullscreen: CSS-only toggle — NO portal, NO second iframe.
   // The same iframe stays mounted the whole time so the video never reloads.
-  // vpDims uses innerWidth/innerHeight (viewport, not screen) so the rotated
-  // div fits exactly between the Android status bar and nav bar.
+  // We use screen.width/height (physical pixels ÷ devicePixelRatio) so the
+  // rotated div fills the entire display after the system bars are hidden.
   const [mobileFullscreen, setMobileFullscreen] = useState(false);
   const [vpDims, setVpDims] = useState({ w: window.innerWidth, h: window.innerHeight });
   useEffect(() => {
-    const update = () => setVpDims({ w: window.innerWidth, h: window.innerHeight });
+    const update = () => {
+      if (!mobileFullscreen) setVpDims({ w: window.innerWidth, h: window.innerHeight });
+    };
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
+  }, [mobileFullscreen]);
+
+  /** Hide or restore Android status bar + navigation bar via our native plugin. */
+  const setImmersive = useCallback((enabled: boolean) => {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+      (Capacitor.Plugins as Record<string, Record<string, () => void>>)
+        .Immersive?.[enabled ? "enter" : "exit"]?.();
+    } catch {
+      // plugin not available on this build — silently ignore
+    }
   }, []);
 
   // Android system back button closes the fullscreen overlay
   useEffect(() => {
     if (!mobileFullscreen) return;
     window.history.pushState({ fsOverlay: true }, "");
-    const onBack = () => setMobileFullscreen(false);
+    const onBack = () => {
+      setImmersive(false);
+      setMobileFullscreen(false);
+    };
     window.addEventListener("popstate", onBack);
     return () => window.removeEventListener("popstate", onBack);
-  }, [mobileFullscreen]);
+  }, [mobileFullscreen, setImmersive]);
 
   // Auto-resume state
   const [resumeFrom, setResumeFrom] = useState<string | null>(null);
@@ -869,7 +886,17 @@ export default function Watch() {
                 {!mobileFullscreen && (
                   <button
                     onClick={() => {
-                      setVpDims({ w: window.innerWidth, h: window.innerHeight });
+                      // Hide system bars first; after they hide the viewport
+                      // expands to full screen.width × screen.height.
+                      setImmersive(true);
+                      // Use physical screen size so the rotated iframe covers
+                      // the whole display even before the resize event fires.
+                      const sw = window.screen.width;
+                      const sh = window.screen.height;
+                      setVpDims({
+                        w: Math.min(sw, sh), // portrait width
+                        h: Math.max(sw, sh), // portrait height (= landscape width)
+                      });
                       setMobileFullscreen(true);
                     }}
                     className="absolute bottom-2 right-2 sm:hidden flex items-center justify-center"
