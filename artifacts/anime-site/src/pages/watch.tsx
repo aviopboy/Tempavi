@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { createPortal } from "react-dom";
 import { useRoute, Link, useLocation } from "wouter";
 import { useUser } from "@clerk/react";
@@ -451,28 +450,52 @@ export default function Watch() {
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const bookmarkBtnRef = useRef<HTMLButtonElement>(null);
 
-  // Manual fullscreen state — user taps the expand button to enter,
-  // taps X or uses system back to exit. Works on any mobile (native or browser).
-  const [mobileFullscreen, setMobileFullscreen] = useState(false);
+  // ref on the player wrapper div — used to call requestFullscreen()
+  const playerWrapRef = useRef<HTMLDivElement>(null);
 
-  // Physical screen dimensions used when the rotation overlay is active.
-  // window.screen.width/height gives hardware pixels and avoids viewport
-  // safe-area inconsistencies that cause gaps with 100vw/100vh.
-  const [screenDims, setScreenDims] = useState({
-    w: window.screen.width,
-    h: window.screen.height,
-  });
+  // Tracks whether the browser's native Fullscreen API is active.
+  // requestFullscreen() triggers Android immersive mode, hiding the
+  // status bar AND navigation bar so the video fills the physical screen.
+  const [isDocFullscreen, setIsDocFullscreen] = useState(false);
+
   useEffect(() => {
-    const update = () => setScreenDims({ w: window.screen.width, h: window.screen.height });
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
+    const onChange = () => setIsDocFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+    };
   }, []);
 
-  // Close fullscreen overlay when user presses Android system back button.
+  // Fallback: CSS-rotation portal used when requestFullscreen() isn't
+  // available (e.g. some Capacitor WebView configs).
+  const [mobileFullscreen, setMobileFullscreen] = useState(false);
+
+  const enterFullscreen = useCallback(() => {
+    const el = playerWrapRef.current;
+    if (!el) { setMobileFullscreen(true); return; }
+    const req: (() => Promise<void>) | undefined =
+      el.requestFullscreen?.bind(el) ?? (el as any).webkitRequestFullscreen?.bind(el);
+    if (req) {
+      req().catch(() => setMobileFullscreen(true)); // API exists but failed → portal
+    } else {
+      setMobileFullscreen(true); // API not available → portal
+    }
+  }, []);
+
+  const exitFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      (document.exitFullscreen?.() ?? Promise.resolve()).catch(() => {});
+    }
+    setMobileFullscreen(false);
+  }, []);
+
+  // Close CSS portal with Android system back button
   useEffect(() => {
     if (!mobileFullscreen) return;
-    const onBack = (e: PopStateEvent) => { e.preventDefault(); setMobileFullscreen(false); };
     window.history.pushState({ fsOverlay: true }, "");
+    const onBack = () => setMobileFullscreen(false);
     window.addEventListener("popstate", onBack);
     return () => window.removeEventListener("popstate", onBack);
   }, [mobileFullscreen]);
@@ -825,56 +848,113 @@ export default function Watch() {
               )}
             </div>
           ) : (
-            /* Normal layout — aspect-video player + fullscreen expand button.
-               The expand button (bottom-right corner, mobile only) opens a
-               CSS-rotated full-screen overlay so the user can tilt their phone
-               landscape and watch without black bars. */
+            /* Default layout: scrollable episode page with player at top.
+               ⤢ button (mobile only) calls requestFullscreen() which triggers
+               Android immersive mode — hides status bar + nav bar so the video
+               fills the physical screen. Inside fullscreen we CSS-rotate the
+               iframe 90° so tilting the phone landscape shows it correctly.
+               Falls back to a CSS-portal overlay if the API isn't available. */
             <>
-              <div className="w-full overflow-hidden bg-black relative"
-                style={{ boxShadow: "0 0 80px -20px hsl(var(--primary) / 0.2)" }}>
-                <div className="aspect-video w-full">
-                  <iframe
-                    src={playerUrl!}
-                    allow="fullscreen; autoplay"
-                    allowFullScreen
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-                    className="w-full h-full border-0"
-                    title="Player"
-                  />
-                </div>
-                {/* Fullscreen button — visible on small screens only */}
-                <button
-                  onClick={() => setMobileFullscreen(true)}
-                  className="absolute bottom-2 right-2 sm:hidden flex items-center justify-center"
-                  style={{
-                    background: "rgba(0,0,0,0.65)", borderRadius: 8,
-                    width: 36, height: 36,
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    backdropFilter: "blur(4px)",
-                  }}
-                  aria-label="Enter fullscreen"
-                >
-                  <Maximize2 style={{ color: "#fff", width: 16, height: 16 }} />
-                </button>
+              {/* playerWrapRef is the fullscreen target */}
+              <div
+                ref={playerWrapRef}
+                className="w-full bg-black relative overflow-hidden"
+                style={{ boxShadow: "0 0 80px -20px hsl(var(--primary) / 0.2)" }}
+              >
+                {isDocFullscreen ? (
+                  /* ── Browser fullscreen active ─────────────────────────────
+                     The browser has set this div to 100vw × 100vh (physical
+                     screen in immersive mode). CSS-rotate the iframe 90° so
+                     the landscape video fills the portrait-locked screen.
+                     vw/vh are correct here because bars are hidden. */
+                  <>
+                    <div style={{
+                      position: "absolute", inset: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      background: "#000",
+                    }}>
+                      <div style={{
+                        width: "100vh",   // tall dim → landscape width
+                        height: "100vw",  // short dim → landscape height
+                        flexShrink: 0,
+                        transform: "rotate(90deg)",
+                        transformOrigin: "center center",
+                      }}>
+                        <iframe
+                          src={playerUrl!}
+                          allow="fullscreen; autoplay"
+                          allowFullScreen
+                          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+                          style={{ width: "100%", height: "100%", border: "none", display: "block" }}
+                          title="Player"
+                        />
+                      </div>
+                    </div>
+                    {/* Exit — top-left in portrait = bottom-left in landscape tilt */}
+                    <button
+                      onClick={exitFullscreen}
+                      style={{
+                        position: "absolute", top: 14, left: 14, zIndex: 10,
+                        background: "rgba(0,0,0,0.6)", borderRadius: "50%",
+                        width: 42, height: 42,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        border: "1px solid rgba(255,255,255,0.25)",
+                      }}
+                      aria-label="Exit fullscreen"
+                    >
+                      <X style={{ color: "#fff", width: 18, height: 18 }} />
+                    </button>
+                    <p style={{
+                      position: "absolute", bottom: 10, left: 0, right: 0,
+                      textAlign: "center", fontSize: 10,
+                      color: "rgba(255,255,255,0.3)", pointerEvents: "none",
+                    }}>
+                      Tilt phone landscape · tap ✕ to exit
+                    </p>
+                  </>
+                ) : (
+                  /* ── Normal (non-fullscreen) layout ────────────────────── */
+                  <>
+                    <div className="aspect-video w-full">
+                      <iframe
+                        src={playerUrl!}
+                        allow="fullscreen; autoplay"
+                        allowFullScreen
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+                        className="w-full h-full border-0"
+                        title="Player"
+                      />
+                    </div>
+                    {/* Fullscreen button — bottom-right, mobile only */}
+                    <button
+                      onClick={enterFullscreen}
+                      className="absolute bottom-2 right-2 sm:hidden flex items-center justify-center"
+                      style={{
+                        background: "rgba(0,0,0,0.65)", borderRadius: 7,
+                        width: 34, height: 34,
+                        border: "1px solid rgba(255,255,255,0.2)",
+                      }}
+                      aria-label="Enter fullscreen"
+                    >
+                      <Maximize2 style={{ color: "#fff", width: 15, height: 15 }} />
+                    </button>
+                  </>
+                )}
               </div>
 
-              {/* Fullscreen overlay — portal-ed to <body> so it escapes any
-                  stacking context. CSS-rotates the iframe 90° so on a portrait
-                  phone, tilting to landscape makes the video fill the screen.
-                  Sized with hardware pixels (screen.width/height) to avoid
-                  safe-area / viewport gaps. */}
-              {mobileFullscreen && playerUrl && createPortal(
+              {/* CSS-portal fallback — used only when requestFullscreen() fails.
+                  Uses screen.width/height (hardware px) to avoid viewport gaps. */}
+              {mobileFullscreen && !isDocFullscreen && playerUrl && createPortal(
                 <div style={{
                   position: "fixed", inset: 0, zIndex: 9999,
                   background: "#000", overflow: "hidden",
                 }}>
                   <div style={{
                     position: "absolute",
-                    width: screenDims.h,  // portrait height → landscape width
-                    height: screenDims.w, // portrait width  → landscape height
+                    width: window.screen.height,
+                    height: window.screen.width,
                     top: "50%", left: "50%",
                     transform: "translate(-50%, -50%) rotate(90deg)",
-                    transformOrigin: "center center",
                   }}>
                     <iframe
                       src={playerUrl}
@@ -885,25 +965,22 @@ export default function Watch() {
                       title="Player fullscreen"
                     />
                   </div>
-                  {/* Exit button — fixed in portrait top-left (= landscape bottom-left
-                      when phone is tilted). Android system back also works. */}
                   <button
-                    onClick={() => setMobileFullscreen(false)}
+                    onClick={exitFullscreen}
                     style={{
-                      position: "absolute", top: 16, left: 16, zIndex: 10000,
+                      position: "absolute", top: 16, left: 16, zIndex: 10,
                       background: "rgba(0,0,0,0.65)", borderRadius: "50%",
                       width: 44, height: 44,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      border: "1.5px solid rgba(255,255,255,0.25)", cursor: "pointer",
-                      backdropFilter: "blur(4px)",
+                      border: "1.5px solid rgba(255,255,255,0.25)",
                     }}
                     aria-label="Exit fullscreen"
                   >
                     <X style={{ color: "#fff", width: 20, height: 20 }} />
                   </button>
                   <p style={{
-                    position: "absolute", bottom: 14, left: 0, right: 0,
-                    textAlign: "center", color: "rgba(255,255,255,0.35)",
+                    position: "absolute", bottom: 12, left: 0, right: 0,
+                    textAlign: "center", color: "rgba(255,255,255,0.3)",
                     fontSize: 11, pointerEvents: "none",
                   }}>
                     Tilt phone landscape · tap ✕ or press back to exit
