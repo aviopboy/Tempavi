@@ -7,7 +7,7 @@ import { useUser } from "@clerk/react";
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Loader2,
   AlertCircle, Play, Tv, Captions, Bookmark, Trash2, Plus, X, Clock, Pencil, Check,
-  CheckCircle2, SkipForward, Link2, Maximize2,
+  CheckCircle2, SkipForward, Link2, Maximize2, Minimize2,
 } from "lucide-react";
 import {
   useGetAnimeEpisode, getGetAnimeEpisodeQueryKey,
@@ -901,6 +901,26 @@ export default function Watch() {
                     aria-label="Enter fullscreen"
                   >
                     <Maximize2 style={{ color: "#fff", width: 15, height: 15 }} />
+                  </button>
+                )}
+
+                {/* ⤡ collapse button — only visible when fullscreen is active */}
+                {mobileFullscreen && (
+                  <button
+                    onClick={() => {
+                      exitFullscreen();
+                      setMobileFullscreen(false);
+                    }}
+                    className="absolute bottom-4 right-4 flex items-center justify-center"
+                    style={{
+                      background: "rgba(0,0,0,0.65)", borderRadius: 7,
+                      width: 38, height: 38,
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      zIndex: 10000,
+                    }}
+                    aria-label="Exit fullscreen"
+                  >
+                    <Minimize2 style={{ color: "#fff", width: 17, height: 17 }} />
                   </button>
                 )}
               </div>
