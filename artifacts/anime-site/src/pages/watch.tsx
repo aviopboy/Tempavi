@@ -453,58 +453,18 @@ export default function Watch() {
 
   // Mobile fullscreen: CSS-only toggle — NO portal, NO second iframe.
   // The same iframe stays mounted the whole time so the video never reloads.
-  // We use screen.width/height (physical pixels ÷ devicePixelRatio) so the
-  // rotated div fills the entire display after the system bars are hidden.
+  // Strategy: lock orientation to landscape instead of rotating the iframe in
+  // CSS. This avoids all inset/viewport-unit calculation issues entirely.
   const [mobileFullscreen, setMobileFullscreen] = useState(false);
-  // Use screen.width/height (physical dimensions) not innerWidth/innerHeight
-  // (CSS viewport). On Android the CSS viewport excludes inset areas even in
-  // immersive mode, so 100vh !== screen height and a strip shows at the edge.
-  const [vpDims, setVpDims] = useState({
-    w: Math.min(window.screen.width, window.screen.height),
-    h: Math.max(window.screen.width, window.screen.height),
-  });
-  useEffect(() => {
-    const update = () => {
-      if (!mobileFullscreen) setVpDims({
-        w: Math.min(window.screen.width, window.screen.height),
-        h: Math.max(window.screen.width, window.screen.height),
-      });
-    };
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [mobileFullscreen]);
 
-  /**
-   * Hide or restore Android status bar + navigation bar.
-   *
-   * Strategy (in order of preference):
-   *  1. Web Fullscreen API — `document.documentElement.requestFullscreen()`
-   *     Works in Android WebView (Chromium) without any APK change.
-   *     { navigationUI: 'hide' } tells Chrome to suppress the nav bar too.
-   *  2. Native ImmersivePlugin (registered in MainActivity.java) — fallback
-   *     for builds that have the plugin; silently skipped if not available.
-   */
-  const setImmersive = useCallback((enabled: boolean) => {
-    if (!Capacitor.isNativePlatform()) return;
-    if (enabled) {
-      // Primary: Web Fullscreen API (works without APK rebuild)
-      document.documentElement
-        .requestFullscreen?.({ navigationUI: "hide" })
-        .catch(() => {});
-      // Fallback: native plugin (only effective after APK rebuild)
-      try {
-        (Capacitor.Plugins as Record<string, Record<string, () => void>>)
-          .Immersive?.enter?.();
-      } catch { /* not yet registered — safe to ignore */ }
-    } else {
-      if (document.fullscreenElement) {
-        document.exitFullscreen?.().catch(() => {});
-      }
-      try {
-        (Capacitor.Plugins as Record<string, Record<string, () => void>>)
-          .Immersive?.exit?.();
-      } catch { /* not yet registered — safe to ignore */ }
-    }
+  const enterFullscreen = useCallback(() => {
+    // Lock to landscape — the OS rotates the phone, so the video fills the
+    // screen natively with no CSS math. Falls back gracefully if unsupported.
+    screen.orientation?.lock?.("landscape").catch(() => {});
+  }, []);
+
+  const exitFullscreen = useCallback(() => {
+    screen.orientation?.unlock?.();
   }, []);
 
   // Android system back button closes the fullscreen overlay
@@ -512,12 +472,12 @@ export default function Watch() {
     if (!mobileFullscreen) return;
     window.history.pushState({ fsOverlay: true }, "");
     const onBack = () => {
-      setImmersive(false);
+      exitFullscreen();
       setMobileFullscreen(false);
     };
     window.addEventListener("popstate", onBack);
     return () => window.removeEventListener("popstate", onBack);
-  }, [mobileFullscreen, setImmersive]);
+  }, [mobileFullscreen, exitFullscreen]);
 
   // Auto-resume state
   const [resumeFrom, setResumeFrom] = useState<string | null>(null);
@@ -892,15 +852,10 @@ export default function Watch() {
                     the div fills the viewport exactly after the 90° turn —
                     no pixel arithmetic, no dependency on screen.*. */}
                 <div style={mobileFullscreen ? {
-                  position: "absolute",
-                  // Use physical screen px, not CSS viewport units.
-                  // 100vh/vw exclude insets in Android WebViews and leave a strip.
-                  // Before rotate(90deg): width=tall, height=narrow.
-                  // After rotate(90deg): visual width=narrow=screen width, visual height=tall=screen height.
-                  width: `${vpDims.h}px`,
-                  height: `${vpDims.w}px`,
-                  top: "50%", left: "50%",
-                  transform: "translate(-50%, -50%) rotate(90deg)",
+                  // Orientation is locked to landscape so no rotation needed —
+                  // just fill the parent fixed overlay 100 × 100.
+                  width: "100%",
+                  height: "100%",
                 } : {
                   position: "relative",
                   paddingBottom: "56.25%", // 16:9
@@ -924,17 +879,7 @@ export default function Watch() {
                 {!mobileFullscreen && (
                   <button
                     onClick={() => {
-                      // Hide system bars first; after they hide the viewport
-                      // expands to full screen.width × screen.height.
-                      setImmersive(true);
-                      // Use physical screen size so the rotated iframe covers
-                      // the whole display even before the resize event fires.
-                      const sw = window.screen.width;
-                      const sh = window.screen.height;
-                      setVpDims({
-                        w: Math.min(sw, sh), // portrait width
-                        h: Math.max(sw, sh), // portrait height (= landscape width)
-                      });
+                      enterFullscreen();
                       setMobileFullscreen(true);
                     }}
                     className="absolute bottom-2 right-2 sm:hidden flex items-center justify-center"
