@@ -20,6 +20,15 @@ public class MainActivity extends BridgeActivity {
         // Lay out content edge-to-edge so the WebView can use the full screen.
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
+        // Belt-and-suspenders: also tell the Capacitor WebView itself not to
+        // consume insets as padding. The layout XML sets fitsSystemWindows=false
+        // on both container and WebView, but Capacitor may re-enable it during
+        // bridge init. Setting it here (after super.onCreate) overrides that.
+        android.view.View webView = getBridge().getWebView();
+        if (webView != null) {
+            webView.setFitsSystemWindows(false);
+        }
+
         // Hide system bars immediately on launch — don't wait for the first
         // focus event, which can arrive late and leave bars visible briefly.
         applyImmersive();

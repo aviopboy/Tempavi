@@ -4,9 +4,14 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fitsSystemWindows="false"
     tools:context=".MainActivity">
 
+    <!-- fitsSystemWindows="false" prevents CoordinatorLayout from converting
+         the status-bar / navigation-bar insets into WebView padding, which
+         is the root cause of the gray gap at the top of the screen. -->
     <WebView
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:fitsSystemWindows="false" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
