@@ -74,12 +74,6 @@ const clerkAppearance = {
     footer: "!shadow-none !border-0 !bg-[#0d0d10] !rounded-none",
     headerTitle: "text-white font-bold",
     headerSubtitle: "text-white/50",
-    // In the native app, social/OAuth buttons open Chrome (Google blocks OAuth
-    // in embedded WebViews). After OAuth, Chrome can't redirect back into the
-    // WebView, so the user gets stranded on the website. Hide them entirely so
-    // only email + password is available inside the app.
-    socialButtonsRoot: isNativeApp ? "!hidden" : "",
-    dividerRow: isNativeApp ? "!hidden" : "",
     socialButtonsBlockButtonText: "text-white/80 font-medium",
     socialButtonsBlockButton: "border-white/10 hover:bg-white/5 bg-white/[0.03]",
     formFieldLabel: "text-white/60 text-sm",
