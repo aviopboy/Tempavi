@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: "AviStream",
   webDir: "dist/public",
   server: {
-    url: "https://tempavistream.netlify.app",
+    url: "https://avistream.netlify.app",
     androidScheme: "https",
     cleartext: false,
   },
