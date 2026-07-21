@@ -106,6 +106,49 @@ function ScrollToTop() {
   return null;
 }
 
+/**
+ * Calls the native ImmersivePlugin (already baked into the APK) to hide
+ * Android status + navigation bars from the JS side. This means no APK
+ * rebuild is needed for the fix to take effect — Netlify deploy is enough.
+ * Runs on mount, on every app foreground event, and on visibility change.
+ */
+function NativeImmersive() {
+  useEffect(() => {
+    if (!isNativeApp) return;
+
+    const hideSystemBars = () => {
+      (window as any).Capacitor?.Plugins?.Immersive?.enter?.();
+    };
+
+    // Apply immediately when the web content loads.
+    hideSystemBars();
+    // Re-apply slightly later in case the WebView inset resets after load.
+    const t1 = setTimeout(hideSystemBars, 300);
+    const t2 = setTimeout(hideSystemBars, 1000);
+
+    // Re-apply whenever the app comes back from background.
+    let removeCapacitorListener: (() => void) | undefined;
+    CapApp.addListener("appStateChange", ({ isActive }) => {
+      if (isActive) hideSystemBars();
+    }).then((handle) => {
+      removeCapacitorListener = () => handle.remove();
+    });
+
+    // Also handle tab/browser visibility changes.
+    const onVisible = () => { if (document.visibilityState === "visible") hideSystemBars(); };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      removeCapacitorListener?.();
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+
+  return null;
+}
+
 function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = useTheme();
   return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;
@@ -267,6 +310,7 @@ function ClerkProviderWithRoutes() {
         <TooltipProvider>
           <ThemeProvider>
             <UserDataProvider>
+              <NativeImmersive />
               <SmartAppBanner />
               <Layout />
               <Toaster />
