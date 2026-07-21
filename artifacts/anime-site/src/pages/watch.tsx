@@ -456,10 +456,19 @@ export default function Watch() {
   // We use screen.width/height (physical pixels ÷ devicePixelRatio) so the
   // rotated div fills the entire display after the system bars are hidden.
   const [mobileFullscreen, setMobileFullscreen] = useState(false);
-  const [vpDims, setVpDims] = useState({ w: window.innerWidth, h: window.innerHeight });
+  // Use screen.width/height (physical dimensions) not innerWidth/innerHeight
+  // (CSS viewport). On Android the CSS viewport excludes inset areas even in
+  // immersive mode, so 100vh !== screen height and a strip shows at the edge.
+  const [vpDims, setVpDims] = useState({
+    w: Math.min(window.screen.width, window.screen.height),
+    h: Math.max(window.screen.width, window.screen.height),
+  });
   useEffect(() => {
     const update = () => {
-      if (!mobileFullscreen) setVpDims({ w: window.innerWidth, h: window.innerHeight });
+      if (!mobileFullscreen) setVpDims({
+        w: Math.min(window.screen.width, window.screen.height),
+        h: Math.max(window.screen.width, window.screen.height),
+      });
     };
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
@@ -884,8 +893,12 @@ export default function Watch() {
                     no pixel arithmetic, no dependency on screen.*. */}
                 <div style={mobileFullscreen ? {
                   position: "absolute",
-                  width: "100vh",   // after rotate(90deg) this becomes the visual height
-                  height: "100vw",  // after rotate(90deg) this becomes the visual width
+                  // Use physical screen px, not CSS viewport units.
+                  // 100vh/vw exclude insets in Android WebViews and leave a strip.
+                  // Before rotate(90deg): width=tall, height=narrow.
+                  // After rotate(90deg): visual width=narrow=screen width, visual height=tall=screen height.
+                  width: `${vpDims.h}px`,
+                  height: `${vpDims.w}px`,
                   top: "50%", left: "50%",
                   transform: "translate(-50%, -50%) rotate(90deg)",
                 } : {
