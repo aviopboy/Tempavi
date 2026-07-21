@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.avistream.app",
+      "sha256_cert_fingerprints": [
+        "C1:D4:AE:56:87:FB:65:49:50:B2:0D:04:F1:36:22:A4:88:46:F2:10:CE:48:79:1F:E8:61:B8:A8:00:72:5E:E4"
+      ]
+    }
+  }
+]
