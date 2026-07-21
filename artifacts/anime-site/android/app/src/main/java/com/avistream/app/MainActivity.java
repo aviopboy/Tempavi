@@ -1,6 +1,8 @@
 package com.avistream.app;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -21,6 +23,11 @@ public class MainActivity extends BridgeActivity {
         // Hide system bars immediately on launch — don't wait for the first
         // focus event, which can arrive late and leave bars visible briefly.
         applyImmersive();
+
+        // The Capacitor WebView can reset window insets after it finishes
+        // loading. Re-apply after a short delay to ensure bars stay hidden.
+        new Handler(Looper.getMainLooper()).postDelayed(this::applyImmersive, 300);
+        new Handler(Looper.getMainLooper()).postDelayed(this::applyImmersive, 800);
     }
 
     @Override

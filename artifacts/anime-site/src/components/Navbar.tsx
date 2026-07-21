@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Search, Menu, X, Tv, Settings, User, LogIn, Tag, ChevronDown, Clock } from "lucide-react";
+import { Search, Menu, X, Tv, Settings, User, LogIn, Tag, ChevronDown, Clock, RefreshCw } from "lucide-react";
 import { useAuth, useUser, useClerk } from "@clerk/react";
 import { useSearchAnime, getSearchAnimeQueryKey } from "@workspace/api-client-react";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -229,6 +229,16 @@ export function Navbar({ settingsOpen, onSettingsToggle, onSettingsClose }: Navb
             aria-label="Search"
           >
             <Search className="w-5 h-5" />
+          </button>
+
+          {/* Refresh — reloads data; useful on mobile where there's no browser refresh */}
+          <button
+            onClick={() => window.location.reload()}
+            className="p-2 rounded-lg transition-colors"
+            style={{ color: "hsl(var(--muted-foreground))" }}
+            aria-label="Refresh"
+          >
+            <RefreshCw className="w-5 h-5" />
           </button>
 
           {/* Auth buttons — desktop */}

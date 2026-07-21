@@ -131,30 +131,53 @@ function ClerkQueryClientCacheInvalidator() {
   return null;
 }
 
-function SignInPage() {
+function AuthPageWrapper({ children }: { children: React.ReactNode }) {
+  const [, setLocation] = useLocation();
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center px-4"
+    <div className="relative flex min-h-[100dvh] items-center justify-center px-4"
       style={{ background: "linear-gradient(135deg, #060608 0%, #0f0f14 50%, #060608 100%)" }}>
       <div className="absolute inset-0 pointer-events-none"
         style={{ backgroundImage: "radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255,107,53,0.06) 0%, transparent 70%)" }} />
-      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+      {/* Close button — always visible so users can exit the auth page */}
+      <button
+        onClick={() => { if (window.history.length > 1) { window.history.back(); } else { setLocation("/"); } }}
+        aria-label="Close"
+        style={{
+          position: "fixed", top: 16, right: 16, zIndex: 100,
+          width: 36, height: 36, borderRadius: "50%",
+          background: "rgba(255,255,255,0.08)",
+          border: "1px solid rgba(255,255,255,0.15)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "pointer", color: "rgba(255,255,255,0.7)",
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+      {children}
     </div>
+  );
+}
+
+function SignInPage() {
+  return (
+    <AuthPageWrapper>
+      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+    </AuthPageWrapper>
   );
 }
 
 function SignUpPage() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center px-4"
-      style={{ background: "linear-gradient(135deg, #060608 0%, #0f0f14 50%, #060608 100%)" }}>
-      <div className="absolute inset-0 pointer-events-none"
-        style={{ backgroundImage: "radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255,107,53,0.06) 0%, transparent 70%)" }} />
+    <AuthPageWrapper>
       <SignUp
         routing="path"
         path={`${basePath}/sign-up`}
         signInUrl={`${basePath}/sign-in`}
         fallbackRedirectUrl={`${basePath}/onboarding`}
       />
-    </div>
+    </AuthPageWrapper>
   );
 }
 

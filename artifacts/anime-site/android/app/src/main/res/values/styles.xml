@@ -13,6 +13,11 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- Hide status bar at the theme level (FLAG_FULLSCREEN) so it is
+             gone before the first frame is drawn — no flicker on launch. -->
+        <item name="android:windowFullscreen">true</item>
+        <!-- Extend layout into the display cutout area on notch devices. -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 
 
