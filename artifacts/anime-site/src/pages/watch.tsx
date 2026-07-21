@@ -878,11 +878,14 @@ export default function Watch() {
                   boxShadow: "0 0 80px -20px hsl(var(--primary) / 0.2)",
                 }}
               >
-                {/* iframe wrapper: aspect-video normally, rotated in fullscreen */}
+                {/* iframe wrapper: aspect-video normally, rotated in fullscreen.
+                    In fullscreen we use 100vh × 100vw (before rotation) so
+                    the div fills the viewport exactly after the 90° turn —
+                    no pixel arithmetic, no dependency on screen.*. */}
                 <div style={mobileFullscreen ? {
                   position: "absolute",
-                  width: vpDims.h,   // viewport height → landscape width after rotate
-                  height: vpDims.w,  // viewport width  → landscape height after rotate
+                  width: "100vh",   // after rotate(90deg) this becomes the visual height
+                  height: "100vw",  // after rotate(90deg) this becomes the visual width
                   top: "50%", left: "50%",
                   transform: "translate(-50%, -50%) rotate(90deg)",
                 } : {
