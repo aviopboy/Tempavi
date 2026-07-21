@@ -17,6 +17,18 @@ public class MainActivity extends BridgeActivity {
 
         // Lay out content edge-to-edge so the WebView can use the full screen.
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
+        // Hide system bars immediately on launch — don't wait for the first
+        // focus event, which can arrive late and leave bars visible briefly.
+        applyImmersive();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Re-apply on every resume (returning from background, permission
+        // dialogs, OAuth redirects, etc. all restore bars temporarily).
+        applyImmersive();
     }
 
     /**

@@ -464,11 +464,17 @@ export default function Watch() {
     // setRequestedOrientation() on Android — guaranteed to work unlike
     // the Web API screen.orientation.lock() which Capacitor WebView ignores.
     ScreenOrientation.lock({ orientation: "landscape" }).catch(() => {});
+    // Orientation changes can cause Android to temporarily restore system bars.
+    // Re-apply immersive mode so the video fills every pixel.
+    (window as any).Capacitor?.Plugins?.Immersive?.enter?.();
   }, []);
 
   const exitFullscreen = useCallback(() => {
     if (!Capacitor.isNativePlatform()) return;
     ScreenOrientation.unlock().catch(() => {});
+    // Restore bars when leaving fullscreen (onWindowFocusChanged will also
+    // re-hide them on next focus, keeping global immersive mode intact).
+    (window as any).Capacitor?.Plugins?.Immersive?.enter?.();
   }, []);
 
   // Android system back button closes the fullscreen overlay
