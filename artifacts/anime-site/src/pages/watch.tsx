@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Capacitor } from "@capacitor/core";
+import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { createPortal } from "react-dom";
 import { useRoute, Link, useLocation } from "wouter";
 import { useUser } from "@clerk/react";
@@ -458,13 +459,16 @@ export default function Watch() {
   const [mobileFullscreen, setMobileFullscreen] = useState(false);
 
   const enterFullscreen = useCallback(() => {
-    // Lock to landscape — the OS rotates the phone, so the video fills the
-    // screen natively with no CSS math. Falls back gracefully if unsupported.
-    screen.orientation?.lock?.("landscape").catch(() => {});
+    if (!Capacitor.isNativePlatform()) return;
+    // Use the native @capacitor/screen-orientation plugin which calls
+    // setRequestedOrientation() on Android — guaranteed to work unlike
+    // the Web API screen.orientation.lock() which Capacitor WebView ignores.
+    ScreenOrientation.lock({ orientation: "landscape" }).catch(() => {});
   }, []);
 
   const exitFullscreen = useCallback(() => {
-    screen.orientation?.unlock?.();
+    if (!Capacitor.isNativePlatform()) return;
+    ScreenOrientation.unlock().catch(() => {});
   }, []);
 
   // Android system back button closes the fullscreen overlay
